@@ -1,0 +1,140 @@
+---
+title: "Some practices of dplyr 20.09.2021"
+author: "You Zhou"
+date: "20/09/2021"
+output:
+  bookdown::pdf_document2:
+    fig_caption: yes
+    number_sections: no
+    toc: yes
+    toc_depth: 3
+  bookdown::html_document2:
+    fig_caption: yes
+    number_sections: no
+    theme: cerulean
+    toc: yes
+    toc_depth: 3
+graphics: yes
+header-includes:
+- \makeatletter\renewcommand*{\fps@figure}{h}\makeatother
+- \usepackage{placeins}
+geometry: margin=1in
+fontsize: 18pt
+---
+
+```{r knitr off, echo=FALSE, message=FALSE,cache=FALSE, results="hide", render=FALSE ,warning=FALSE}
+knitr::opts_chunk$set(echo=TRUE, error=FALSE, warning=FALSE,message=FALSE)
+# Setting the global options for all chunks
+```
+
+\FloatBarrier
+
+# Introduction
+In this coding tasks, we will do some practices about using the `dplyr` package. Before moving to 
+the questions, please make sure that you load the library and use the correct test data set ; )
+
+```{r, echo=T}
+## loading the required package
+library(tidyverse) ## this library is a libraries collection which includes the 'dplyr'
+## loading the correct data set for the incoming questions
+data("diamonds")
+head(diamonds)
+```
+
+# Practice 1
+Extract the carat, cut, color and price column from the data.
+
+Tips: `select` function may help.
+
+```{r}
+df <- diamonds %>% select(carat:color, price)
+df
+```
+
+# Practice 2
+Making a new column to show the number of row for all the diamonds with function `mutate`.
+
+```{r}
+df <- df %>% mutate(row_number = row_number())
+df
+```
+
+# Practice 3
+Let's first make a unique ID for each diamond.
+
+```{r echo=TRUE}
+set.seed(1)
+diamonds$ID <- sample(1:nrow(diamonds), nrow(diamonds), replace = FALSE)
+```
+
+And we have a new data which have the column ID, virtual price and some number.
+
+```{r echo=TRUE}
+df_virtual <- data.frame(
+  ID = 1:nrow(diamonds), 
+  virtual_price = nrow(diamonds):1,
+  some_number = nrow(diamonds):1
+)
+head(df_virtual)
+```
+
+Now the question is how can we joint the `df_virtual` to the original `diamonds` data frame.
+
+```{r}
+df <- left_join(diamonds, df_virtual, by = "ID") %>% 
+  select(!(x:z))
+head(df)
+```
+
+# Practice 4
+Find out the maximum `price` for different `color` and convert the result into a bar plot.
+
+Tips: `group_by` function may help.
+
+```{r}
+## this package is unnecessary but can make the plot nicer ; )
+library(ggthemr)
+ggthemr('solarized')
+
+df <- diamonds %>% group_by(color) %>% 
+  summarise(price = max(price))
+
+ggplot(df, aes(x = color, y = price, label = price)) + 
+  geom_bar(stat = "identity") + 
+  geom_text()
+```
+
+# Practice 5
+Sum up all the price for the diamonds with the same `cut` and `color`. And using a `dodge bar` 
+chart for the visualization.
+
+```{r}
+df <- diamonds %>% group_by(cut, color) %>%
+  summarise(Price_sum = sum(price)) 
+
+ggplot(df, aes(x = color, y = Price_sum, fill = cut)) + 
+  geom_bar(stat = "identity", position = "dodge")
+```
+
+# Practice 6
+For the diamonds with the **Premium** `cut`, extract the **top 5** diamonds with the highest 
+`price` for each `color`. Then make a *boxplot* to show this result.
+
+```{r}
+df <- diamonds %>% arrange(desc(price)) %>% 
+  filter(cut == "Premium") %>% 
+  group_by(color) %>% 
+  slice_max(order_by = price, n = 5)
+  
+ggplot(df, aes(x = color, y = price)) + 
+  geom_boxplot()
+```
+
+# Practice 7
+Count the number for the diamonds which have the same `cut` and `color`.
+
+```{r}
+df <- diamonds %>% group_by(cut, color) %>%
+  summarise(Number = n())
+head(df)
+```
